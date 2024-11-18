@@ -10,7 +10,7 @@ class CosplayModel {
 
   // Crée l'architecture du réseau de neurones
   buildModel() {
-    console.log("Catégories:", this.categories);
+    console.log("Personnages disponibles:", this.categories);
 
     // On crée un modèle où les couches se suivent les unes après les autres
     const model = tf.sequential();
