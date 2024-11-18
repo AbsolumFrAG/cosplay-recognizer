@@ -8,47 +8,69 @@ class CosplayModel {
     this.model = this.buildModel();
   }
 
+  // Crée l'architecture du réseau de neurones
   buildModel() {
     console.log("Catégories:", this.categories);
+
+    // On crée un modèle où les couches se suivent les unes après les autres
     const model = tf.sequential();
 
+    // Première couche qui analyse l'image
+    // C'est comme si on passait un filtre sur l'image pour détecter les formes simples
     model.add(
       tf.layers.conv2d({
-        filters: 32,
-        kernelSize: 3,
-        activation: "relu",
-        inputShape: [224, 224, 3],
+        filters: 32, // Nombre de filtres différents
+        kernelSize: 3, // Taille de la "fenêtre" qui analyse l'image
+        activation: "relu", // Fonction qui aide à apprendre les motifs complexes
+        inputShape: [224, 224, 3], // Taille des images en entrée (224x224 pixels, 3 couleurs RGB)
       })
     );
+
+    // On réduit la taille de l'image pour garder les informations importantes
     model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
 
+    // Deuxième couche d'analyse, plus complexe
+    // Elle peut détecter des motifs plus élaborés
     model.add(
       tf.layers.conv2d({
-        filters: 64,
+        filters: 64, // Plus de filtres pour plus de détails
         kernelSize: 3,
         activation: "relu",
       })
     );
+    // Encore une réduction de taille
     model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
 
+    // On transforme notre image en une liste de nombres
     model.add(tf.layers.flatten());
-    model.add(tf.layers.dense({ units: 128, activation: "relu" }));
+
+    // Couche qui combine toutes les informations
     model.add(
       tf.layers.dense({
-        units: this.categories.length,
-        activation: "softmax",
+        units: 128, // Nombre de neurones
+        activation: "relu",
       })
     );
 
+    // Couche finale qui donne les probabilités pour chaque cosplay
+    model.add(
+      tf.layers.dense({
+        units: this.categories.length, // Un neurone par type de cosplay
+        activation: "softmax", // Convertit les résultats en pourcentages
+      })
+    );
+
+    // On configure comment le modèle va apprendre
     model.compile({
-      optimizer: "adam",
-      loss: "categoricalCrossentropy",
-      metrics: ["accuracy"],
+      optimizer: "adam", // Méthode d'apprentissage
+      loss: "categoricalCrossentropy", // Comment mesurer les erreurs
+      metrics: ["accuracy"], // On veut voir le pourcentage de réussite
     });
 
     return model;
   }
 
+  // Fonction pour entraîner le modèle avec les images
   async train(epochs = 50) {
     const dataset = await this.loadDataset();
     const { xs, ys } = this.preprocessDataset(dataset);
@@ -78,6 +100,7 @@ class CosplayModel {
         const imageBuffer = fs.readFileSync(imagePath);
         let tensor = tf.node.decodeImage(imageBuffer);
 
+        // Si l'image a 4 canaux, on enlève le canal alpha
         if (tensor.shape[2] === 4) {
           tensor = tensor.slice(
             [0, 0, 0],
@@ -95,12 +118,14 @@ class CosplayModel {
   }
 
   preprocessDataset(dataset) {
+    // Redimensionne toutes les images à la même taille et normalise les couleurs
     const xs = tf.stack(
       dataset.map((d) =>
         tf.image.resizeBilinear(d.tensor, [224, 224]).div(255.0)
       )
     );
 
+    // Convertit les noms de catégories en format que le réseau peut comprendre
     const ys = tf.oneHot(
       dataset.map((d) => this.categories.indexOf(d.label)),
       this.categories.length
