@@ -9,13 +9,22 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Nous avons besoin d'accéder à votre caméra pour prendre des photos.",
+        "NSPhotoLibraryUsageDescription": "Nous avons besoin d'accéder à votre bibliothèque de photos."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ],
+      "package": "com.pmurail.front"
     },
     "web": {
       "bundler": "metro",
@@ -38,10 +47,24 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": true
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permettre à $(PRODUCT_NAME) d'accéder à votre caméra."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "2504b505-6176-4cf5-8ae6-9284e5a59706"
+      }
     }
   }
 }
