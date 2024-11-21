@@ -7,6 +7,7 @@ from keras.api.applications.mobilenet_v3 import preprocess_input
 from keras.api.utils import load_img, img_to_array, image_dataset_from_directory
 from keras.api.optimizers import Adam
 import time
+from PIL import Image
 
 class ModernCosplayClassifier:
     def __init__(self, image_size=(224, 224)):
@@ -182,38 +183,54 @@ class ModernCosplayClassifier:
         np.save('class_names.npy', self.class_names)
         
         return history, history_fine
+    
+    def preprocess_image(self, image):
+        """
+        Prétraite une image pour la prédiction
+        """
+        if isinstance(image, str):
+            image = tf.io.read_file(image)
+            image = tf.image.decode_image(image, channels=3)
+        elif isinstance(image, Image.Image):
+            # Convertir l'image PIL en RGB et en array numpy
+            image = image.convert('RGB')
+            image = np.array(image)
+        
+        # Redimensionner l'image
+        image = tf.image.resize(image, self.image_size)
+        # S'assurer qu'on a 3 canaux
+        image = tf.image.grayscale_to_rgb(image) if tf.shape(image)[-1] == 1 else image[:, :, :3]
+        # Normaliser
+        image = tf.cast(image, tf.float32)
+        image = preprocess_input(image)
+        return image
 
     @tf.function
-    def predict_single(self, img):
-        """Prédit sur une seule image (avec décoration tf.function pour la vitesse)"""
-        return self.model(img, training=False)
+    def predict_single(self, preprocessed_image):
+        """Prédit sur une seule image prétraitée"""
+        return self.model(preprocessed_image, training=False)
 
-    def predict(self, image_path):
-        """Prédit la classe d'une image"""
-        if isinstance(image_path, str):
-            img = load_img(
-                image_path, 
-                target_size=self.image_size
-            )
-            img = img_to_array(img)
-        else:
-            # Pour les images PIL
-            img = image_path.resize(self.image_size)
-            img = img_to_array(img)
+    def predict(self, image):
+        """
+        Prédit la classe d'une image
+        """
+        # Prétraiter l'image
+        preprocessed = self.preprocess_image(image)
+        # Ajouter la dimension du batch
+        preprocessed = tf.expand_dims(preprocessed, 0)
         
-        img = tf.expand_dims(img, 0)
-        img = preprocess_input(img)
-        
-        predictions = self.predict_single(img)
+        # Faire la prédiction
+        predictions = self.predict_single(preprocessed)
         
         # Obtenir les 3 meilleures prédictions
         top_3_idx = tf.argsort(predictions[0])[-3:][::-1]
         results = []
         
         for idx in top_3_idx:
+            idx = int(idx)
             results.append({
-                "character": self.class_names[int(idx)],
-                "confidence": float(predictions[0][int(idx)] * 100)
+                "character": self.class_names[idx],
+                "confidence": float(predictions[0][idx] * 100)
             })
         
         return results

@@ -23,8 +23,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copier le code source
 COPY . /app/
 
+# Créer les dossiers nécessaires
+RUN mkdir -p /app/reference_images
+
 # Créer un utilisateur non-root
-RUN useradd -m myuser
+RUN useradd -m myuser && \
+    chown -R myuser:myuser /app
 USER myuser
 
 # Commande par défaut
