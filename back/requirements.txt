@@ -3,6 +3,4 @@ uvicorn
 tensorflow
 pillow
 numpy
-tqdm
-matplotlib
-seaborn
+python-multipart
