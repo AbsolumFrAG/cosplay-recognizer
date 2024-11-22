@@ -4,7 +4,7 @@ from keras.api.applications import MobileNetV3Large
 from keras.api import layers, models, Sequential
 from keras.api.callbacks import EarlyStopping, ReduceLROnPlateau
 from keras.api.applications.mobilenet_v3 import preprocess_input
-from keras.api.utils import load_img, img_to_array, image_dataset_from_directory
+from keras.api.utils import image_dataset_from_directory
 from keras.api.optimizers import Adam
 import time
 from PIL import Image
