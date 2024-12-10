@@ -48,7 +48,7 @@ const HomeScreen = () => {
             const formData = new FormData();
             formData.append('file', blob, 'photo.png');
 
-            const serverResponse = await fetch('http://localhost:8080/send', {
+            const serverResponse = await fetch('https://cosplay-recognizer-api-production.up.railway.app/predict', {
                 method: 'POST',
                 body: formData,
             });

@@ -18,24 +18,21 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-        "usesCleartextTraffic": true
+        "backgroundColor": "#ffffff"
       },
+      "usesCleartextTraffic": true,
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "MANAGE_EXTERNAL_STORAGE",
-        "INTERNET",
-        "ACCESS_NETWORK_STATE",
-        "ACCESS_WIFI_STATE"
+        "android.permissions.READ_EXTERNAL_STORAGE",
+        "android.permissions.WRITE_EXTERNAL_STORAGE",
+        "android.permissions.ACCESS_MEDIA_LOCATION",
+        "android.permissions.CAMERA"
       ],
       "splash": {
         "image": "./assets/images/splash-icon.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.pmurail.front"
+      "package": "com.user.front"
     },
     "web": {
       "bundler": "metro",
