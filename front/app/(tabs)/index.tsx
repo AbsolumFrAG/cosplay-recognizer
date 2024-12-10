@@ -1,8 +1,14 @@
-import React, { useRef, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
+import React, {useRef, useState} from 'react';
+import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {CameraType, CameraView, useCameraPermissions} from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, SwitchCamera } from 'lucide-react';
+import {Camera, SwitchCamera} from 'lucide-react-native';
+
+interface CharacterConfidence {
+    character: string;
+    confidence: number;
+    reference_image: string;
+}
 
 const HomeScreen = () => {
     const [facing, setFacing] = useState<CameraType>('back');
@@ -10,6 +16,7 @@ const HomeScreen = () => {
     const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [showCamera, setShowCamera] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [result, setResult] = useState<CharacterConfidence[] | null>(null);
     const cameraRef = useRef<CameraView | null>(null);
 
     const takePicture = async () => {
@@ -32,40 +39,41 @@ const HomeScreen = () => {
 
     const uploadPhoto = async () => {
         if (!photoUri) return;
-
         setIsLoading(true);
-        try {
-            const formData = new FormData();
-            formData.append('photo', {
-                uri: photoUri,
-                type: 'image/jpeg',
-                name: 'photo.jpg'
-            } as any);
 
-            const response = await fetch('http://localhost:8080/send', {
+        try {
+            const response = await fetch(photoUri);
+            const blob = await response.blob();
+
+            const formData = new FormData();
+            formData.append('file', blob, 'photo.png');
+
+            const serverResponse = await fetch('http://localhost:8080/send', {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
             });
 
-            if (!response.ok) {
-                throw new Error('Erreur lors de l\'envoi de la photo');
+            if (!serverResponse.ok) {
+                throw new Error(`Erreur lors de l'envoi de la photo: ${await serverResponse.text()}`);
             }
 
-            const result = await response.json();
-            console.log('Photo envoyée avec succès:', result);
+            const data = await serverResponse.json();
+
+            if (data.predictions) {
+                setResult(data.predictions);
+            } else {
+                throw new Error("Réponse inattendue du serveur.");
+            }
 
             setPhotoUri(null);
-
         } catch (error) {
-            console.error('Erreur lors de l\'upload:', error);
-            alert('Erreur lors de l\'envoi de la photo');
+            console.error('Erreur:', error);
+            alert(`Erreur lors de l'envoi: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
     };
+
 
     const pickImage = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -88,31 +96,61 @@ const HomeScreen = () => {
     };
 
     if (!permission) {
-        return <View />;
+        return <View/>;
     }
 
     if (!permission.granted) {
         return (
             <View style={styles.container}>
-                <Text style={styles.message}>Nous avons besoin de votre permission pour utiliser la caméra</Text>
-                <TouchableOpacity
-                    style={styles.startButton}
-                    onPress={requestPermission}
-                >
-                    <Text style={styles.startButtonText}>Autoriser l'accès</Text>
+                <Text>Permission nécessaire pour accéder à la caméra</Text>
+                <TouchableOpacity onPress={requestPermission}>
+                    <Text>Autoriser</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
+
     function toggleCameraFacing() {
         setFacing(current => (current === 'back' ? 'front' : 'back'));
     }
 
+    if (result) {
+        return (
+            <View style={styles.resultContainer}>
+                <Text style={styles.title}>Résultats :</Text>
+                {result.map((prediction, index) => (
+                    <View key={index} style={styles.resultItem}>
+                        <View style={styles.imageContainer}>
+                            <Image
+                                source={{uri: prediction.reference_image}}
+                                style={styles.referenceImage}
+                                resizeMode="contain"
+                            />
+                        </View>
+                        <Text style={styles.characterName}>
+                            {index + 1}. {prediction.character}
+                        </Text>
+                        <Text style={styles.confidenceText}>
+                            Confiance : {prediction.confidence.toFixed(2)}%
+                        </Text>
+                    </View>
+                ))}
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => setResult(null)}
+                >
+                    <Text style={styles.buttonText}>Retour</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+
     if (photoUri) {
         return (
             <View style={styles.container}>
-                <Image source={{ uri: photoUri }} style={styles.preview} />
+                <Image source={{uri: photoUri}} style={styles.preview}/>
                 <View style={styles.buttonRow}>
                     <TouchableOpacity
                         style={[styles.button, styles.buttonCancel]}
@@ -168,14 +206,14 @@ const HomeScreen = () => {
                         style={styles.iconButton}
                         onPress={toggleCameraFacing}
                     >
-                        <SwitchCamera size={32} color="white" />
+                        <SwitchCamera size={32} color="white"/>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.captureButton}
                         onPress={takePicture}
                     >
-                        <Camera size={40} color="white" />
+                        <Camera size={40} color="white"/>
                     </TouchableOpacity>
                 </View>
             </CameraView>
@@ -184,6 +222,54 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
+
+    resultItem: {
+        marginBottom: 20,
+        alignItems: 'center',
+    },
+    imageContainer: {
+        width: 120,
+        height: 120,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        borderRadius: 10,
+        overflow: 'hidden',
+    },
+    referenceImage: {
+        width: '100%',
+        height: '100%',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+    },
+
+    preview: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+        borderRadius: 10,
+        marginBottom: 20,
+    },
+    backButton: {
+        backgroundColor: '#2196F3',
+        padding: 15,
+        borderRadius: 10,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        marginTop: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 120,
+    },
     container: {
         flex: 1,
         justifyContent: 'center',
@@ -194,10 +280,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#fff',
     },
-    preview: {
+    resultContainer: {
         flex: 1,
-        width: '100%',
-        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    characterImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        marginBottom: 20,
+    },
+    characterName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    confidenceText: {
+        fontSize: 18,
+        color: '#555',
+        marginBottom: 20,
     },
     buttonRow: {
         flexDirection: 'row',
